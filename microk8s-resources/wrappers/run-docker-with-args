@@ -8,13 +8,19 @@ export LD_LIBRARY_PATH=$SNAP_LIBRARY_PATH:$LD_LIBRARY_PATH
 #TODO(kjackal): Make sure this works on every distro
 # Until we get a way to properly patch the docker-default profile
 # https://github.com/moby/moby/issues/33060
+#FIXME(jdstrand): modern docker doesn't write out /etc/apparmor.d/docker, so
+# neither should we. This should be snap-specific
 if [ -d "/etc/apparmor.d" ]; then
   # we have AppArmor
   if [ -f /etc/apparmor.d/docker ]; then
     # docker default profile exists
     if ! $(grep -qE "snap.microk8s.daemon-docker" /etc/apparmor.d/docker); then
       echo "Patching docker-default profile"
-      "$SNAP/bin/sed" 's/^}$/\ \ signal\ (receive)\ peer=snap.microk8s.daemon-docker,\n}/' -i /etc/apparmor.d/docker
+      #FIXME(jdstrand): docker should be patched to add this rule. For now
+      # write to a tmp file to avoid sed writing temp files to /etc/apparmor.d
+      tmp=`mktemp`
+      "$SNAP/bin/sed" 's/^}$/\ \ signal\ (receive)\ peer=snap.microk8s.daemon-docker,\n}/' /etc/apparmor.d/docker > "$tmp"
+      mv -f "$tmp" /etc/apparmor.d/docker
     else
       echo "Docker default profile already patched"
     fi
@@ -23,13 +29,20 @@ if [ -d "/etc/apparmor.d" ]; then
     cp ${SNAP}/docker-profile /etc/apparmor.d/docker
   fi
   echo "Reloading AppArmor profiles"
-  if ! service apparmor reload
+  if ! apparmor_parser -r /etc/apparmor.d/docker
   then
     echo "AppArmor profiles loading failed. AppArmor may be unavailable on this host."
   fi
 fi
 
 app=dockerd
+
+# setup snap layouts directories
+mkdir -p "$SNAP_COMMON"/etc/docker || true
+
+#FIXME(jdstrand): should be in kubelet
+mkdir -p "$SNAP_COMMON"/var/lib/cni || true
+
 
 # This is really the only way I could find to get the args passed in correctly. WTF
 declare -a args="($(cat $SNAP_DATA/args/$app))"

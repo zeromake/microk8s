@@ -44,8 +44,8 @@ then
   fi
 else
   # ensure docker dirs
-  mkdir -p $SNAP_COMMON/var/run/docker
-  mkdir -p $SNAP_COMMON/var/lib/docker
+  mkdir -p $SNAP_COMMON/var/run/docker || true
+  mkdir -p $SNAP_COMMON/var/lib/docker || true
 fi
 
 # This is really the only way I could find to get the args passed in correctly. WTF

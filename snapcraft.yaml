@@ -4,34 +4,79 @@ version-script: |
   echo $KUBE_VERSION
 version: "latest"
 summary: Kubernetes in your box.
+base: core18
 description: Microk8s deploys and configures all kubernetes services in a snap.
-grade: stable
-confinement: classic
+grade: devel
+confinement: strict
+
+plugs:
+  docker-privileged:
+    interface: docker-support
+    privileged-containers: true
+  k8s-kubelet:
+    interface: kubernetes-support
+    flavor: kubelet
+  k8s-kubeproxy:
+    interface: kubernetes-support
+    flavor: kubeproxy
 
 apps:
   daemon-etcd:
     command: run-etcd-with-args
     daemon: simple
+    plugs:
+    - network-bind
   daemon-docker:
     command: run-docker-with-args
     daemon: simple
+    plugs:
+    - docker-privileged
+    - firewall-control
+    - kernel-module-control
+    - network-bind
+    - network-control
   daemon-apiserver:
     command: run-with-config-args kube-apiserver
     daemon: simple
+    plugs:
+    - network-bind
   daemon-controller-manager:
     command: run-with-config-args kube-controller-manager
     daemon: simple
+    plugs:
+    - network-bind
   daemon-scheduler:
     command: run-with-config-args kube-scheduler
     daemon: simple
+    plugs:
+    - network-bind
   daemon-kubelet:
     command: run-with-config-args kubelet
     daemon: simple
+    plugs:
+    - firewall-control
+    - network-bind
+    - k8s-kubelet
+#    - kernel-module-observe
+    - hardware-observe
+    - mount-observe
+    - network-control
+    - process-control
+    - system-observe
   daemon-proxy:
     command: run-with-config-args kube-proxy
     daemon: simple
+    plugs:
+    - network-bind
+    - firewall-control
+    - k8s-kubeproxy
+#    - kernel-module-observe
+    - mount-observe
+    - system-observe
   kubectl:
     command: kubectl --kubeconfig=$SNAP/client.config
+    plugs:
+    - network
   docker:
     command: microk8s-docker.wrapper
   inspect:
@@ -46,6 +91,18 @@ apps:
     command: microk8s-reset.wrapper
   istioctl:
     command: microk8s-istioctl.wrapper
+
+# /etc/docker needed for /etc/docker/key.json
+# /var/lib/cni needed by kubelet
+layout:
+#  /etc/docker:
+#    symlink: $SNAP_COMMON/etc/docker
+  /var/lib/cni:
+    symlink: $SNAP_COMMON/var/lib/cni
+  /var/log/pods:
+    bind: $SNAP/var/log/pods
+  /var/log/containers:
+    bind: $SNAP/var/log/containers
 
 parts:
   libnftnl:
