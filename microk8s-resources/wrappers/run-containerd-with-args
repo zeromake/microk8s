@@ -1,6 +1,6 @@
 #!/bin/bash
 set -e
-export PATH="$SNAP/usr/sbin:$SNAP/usr/bin:$SNAP/sbin:$SNAP/bin:$PATH"
+export PATH="$SNAP/bin:$SNAP/usr/sbin:$SNAP/usr/bin:$SNAP/sbin:$PATH"
 export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:$SNAP/lib:$SNAP/usr/lib:$SNAP/lib/x86_64-linux-gnu:$SNAP/usr/lib/x86_64-linux-gnu"
 export LD_LIBRARY_PATH=$SNAP_LIBRARY_PATH:$LD_LIBRARY_PATH
 
@@ -30,4 +30,4 @@ declare -a args="($(cat $SNAP_DATA/args/$app))"
 set -a
 . "${SNAP_DATA}/args/${app}-env"
 set +a
-exec "$SNAP/usr/bin/$app" "${args[@]}"
+exec "$SNAP/bin/$app" "${args[@]}"

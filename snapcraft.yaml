@@ -91,23 +91,66 @@ parts:
     - "--disable-shared"
     - "--enable-static"
     prime: [ -bin/iptables-xml ]
-  docker:
-    after: [iptables]
-    plugin: dump
+  go:
+    source-tag: go1.10.4
+  containerd:
+    after: [go, iptables]
+    source: .
+    plugin: go
+    go-importpath: github.com/containerd/containerd
+    build-packages:
+    - btrfs-tools
+    - libseccomp-dev
+    override-build: |
+      set -eu
+      . build-scripts/prepare-env.sh
+
+      go version
+      export GOPATH=$(realpath ../go)
+      mkdir -p $SNAPCRAFT_PART_INSTALL/bin
+      # Build containerd
+      go get github.com/containerd/containerd
+      (
+        cd $GOPATH/src/github.com/containerd/containerd
+        git checkout ${CONTAINERD_COMMIT}
+        # building the btrfs driver can be disabled via the
+        # build tag no_btrfs, removing this dependency
+        make
+      )
+      cp $GOPATH/src/github.com/containerd/containerd/bin/* $SNAPCRAFT_PART_INSTALL/bin/
+      rm $SNAPCRAFT_PART_INSTALL/bin/containerd-stress
+
+      # Build runc
+      go get github.com/opencontainers/runc
+      (
+        cd $GOPATH/src/github.com/opencontainers/runc
+        git checkout ${RUNC_COMMIT}
+        make BUILDTAGS='seccomp apparmor'
+      )
+      cp $GOPATH/src/github.com/opencontainers/runc/runc $SNAPCRAFT_PART_INSTALL/bin/
+
+      # Assemble the snap
+      # snapcraftctl build
+    organize:
+      containerd/install/bin/*: bin/
     stage-packages:
     - conntrack
-    - docker.io
     - aufs-tools
     - gawk
     - sed
-    source: .
+    - socat
+    - grep
+    - libssl1.0.0
+    - coreutils
+    - hostname
+    - diffutils
+    - docker.io
     stage:
     - -sbin/xtables-multi
     - -sbin/iptables*
     - -lib/xtables
-    override-build: "true"
   microk8s:
-    after: [docker]
+    after: [containerd]
     plugin: dump
     build-attributes: [no-patchelf]
     build-packages:
