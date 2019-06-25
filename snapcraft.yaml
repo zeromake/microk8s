@@ -132,7 +132,7 @@ parts:
       # Assemble the snap
       # snapcraftctl build
     organize:
-      containerd/install/bin/*: bin/
+      containerd/install/bin/*: usr/bin/
     stage-packages:
     - conntrack
     - aufs-tools
