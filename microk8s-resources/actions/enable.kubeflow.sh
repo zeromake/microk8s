@@ -9,8 +9,8 @@ import sys
 import tempfile
 import textwrap
 import time
-from itertools import count
 from distutils.util import strtobool
+from itertools import count
 
 
 def run(*args, die=True, debug=False):
@@ -61,7 +61,8 @@ def main():
     password = os.environ.get("KUBEFLOW_AUTH_PASSWORD") or get_random_pass()
     channel = os.environ.get("KUBEFLOW_CHANNEL") or "stable"
     no_proxy = os.environ.get("KUBEFLOW_NO_PROXY") or None
-    hostname = os.environ.get("KUBEFLOW_HOSTNAME") or "localhost"
+    hostname = os.environ.get("KUBEFLOW_HOSTNAME") or None
+    metallb_ip_range = os.environ.get("METALLB_IP_RANGE") or "10.64.140.43-10.64.140.49"
 
     password_overlay = {
         "applications": {
@@ -73,9 +74,24 @@ def main():
         }
     }
 
-    for service in ["dns", "storage", "dashboard", "ingress", "rbac", "juju"]:
-        print("Enabling %s..." % service)
-        run("microk8s-enable.wrapper", service)
+    services = [
+        ("dns", None),
+        ("storage", None),
+        ("dashboard", None),
+        ("ingress", None),
+        ("rbac", None),
+        ("juju", None),
+    ]
+
+    if hostname is None:
+        services += [("metallb", metallb_ip_range)]
+
+    for service, args in services:
+        if args:
+            print("Enabling service %s with args %s" % (service, args))
+        else:
+            print("Enabling service %s..." % service)
+        run("microk8s-enable.wrapper", "%s:%s" % (service, args or ""))
 
     try:
         juju("show-controller", "uk8s", die=False)
@@ -93,6 +109,84 @@ def main():
     else:
         juju("bootstrap", "microk8s", "uk8s")
         juju("add-model", "kubeflow", "microk8s")
+
+    if hostname is None:
+        amb_svc = json.dumps(
+            {
+                "apiVersion": "v1",
+                "kind": "Service",
+                "metadata": {
+                    "name": "ambassador-service",
+                    "namespace": "kubeflow",
+                    "annotations": {"metallb.universe.tf/address-pool": "default"},
+                },
+                "spec": {
+                    "selector": {"juju-app": "ambassador"},
+                    "ports": [{"port": 8000, "targetPort": 80}],
+                    "type": "LoadBalancer",
+                },
+            },
+        ).encode("utf-8")
+        env = os.environ.copy()
+        env["PATH"] += ":%s" % os.environ["SNAP"]
+
+        subprocess.run(
+            ["microk8s-kubectl.wrapper", "apply", "-f", "-"],
+            input=amb_svc,
+            stderr=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            env=env,
+        ).check_returncode()
+
+        output = run(
+            "microk8s-kubectl.wrapper",
+            "get",
+            "-n",
+            "kubeflow",
+            "svc/ambassador-service",
+            "-ojson",
+            die=False,
+        )
+        pub_ip = json.loads(output)["status"]["loadBalancer"]["ingress"][0]["ip"]
+        hostname = "%s.xip.io" % pub_ip
+    else:
+        ingress = json.dumps(
+            {
+                "apiVersion": "extensions/v1beta1",
+                "kind": "Ingress",
+                "metadata": {"name": "ambassador-ingress", "namespace": "kubeflow"},
+                "spec": {
+                    "rules": [
+                        {
+                            "host": hostname,
+                            "http": {
+                                "paths": [
+                                    {
+                                        "backend": {
+                                            "serviceName": "ambassador",
+                                            "servicePort": 80,
+                                        },
+                                        "path": "/",
+                                    }
+                                ]
+                            },
+                        }
+                    ],
+                    "tls": [{"hosts": [hostname], "secretName": "dummy-tls"}],
+                },
+            }
+        ).encode("utf-8")
+
+        env = os.environ.copy()
+        env["PATH"] += ":%s" % os.environ["SNAP"]
+
+        subprocess.run(
+            ["microk8s-kubectl.wrapper", "apply", "-f", "-"],
+            input=ingress,
+            stderr=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            env=env,
+        ).check_returncode()
 
     with tempfile.NamedTemporaryFile("w+") as f:
         json.dump(password_overlay, f)
@@ -131,44 +225,6 @@ def main():
         "--all",
     )
 
-    # Workaround for https://bugs.launchpad.net/juju/+bug/1849725.
-    ingress = json.dumps(
-        {
-            "apiVersion": "extensions/v1beta1",
-            "kind": "Ingress",
-            "metadata": {"name": "ambassador-ingress", "namespace": "kubeflow"},
-            "spec": {
-                "rules": [
-                    {
-                        "host": hostname,
-                        "http": {
-                            "paths": [
-                                {
-                                    "backend": {
-                                        "serviceName": "ambassador",
-                                        "servicePort": 80,
-                                    },
-                                    "path": "/",
-                                }
-                            ]
-                        },
-                    }
-                ],
-                "tls": [{"hosts": [hostname], "secretName": "dummy-tls"}],
-            },
-        }
-    ).encode("utf-8")
-
-    env = os.environ.copy()
-    env["PATH"] += ":%s" % os.environ["SNAP"]
-
-    subprocess.run(
-        ["microk8s-kubectl.wrapper", "apply", "-f", "-"],
-        input=ingress,
-        stderr=subprocess.PIPE,
-        stdout=subprocess.PIPE,
-        env=env,
-    ).check_returncode()
 
     print(
         textwrap.dedent(
