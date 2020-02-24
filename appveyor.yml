@@ -63,7 +63,7 @@ for:
 
   test_script:
   - cmd: |
-      installer\dist\microk8s.exe -s -f1install.iss
+      installer\dist\microk8s.exe install --assume-yes
 
   artifacts:
   - path: installer\dist\microk8s.exe
