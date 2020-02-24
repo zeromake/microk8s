@@ -63,7 +63,7 @@ for:
 
   test_script:
   - cmd: |
-      echo "Running select unit tests..."
+      installer\dist\microk8s.exe -s -f1install.iss
 
   artifacts:
   - path: installer\dist\microk8s.exe
