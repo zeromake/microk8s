@@ -63,6 +63,13 @@ for:
 
   test_script:
   - cmd: |
+      msiexec /i installer\dist\microk8s-installer.msix /l*v msi.txt /qn
+      type msi.txt
+      del msi.txt
+      msiexec /x installer\dist\microk8s-installer.msix /l*v msi.txt /qn
+      type msi.txt
+      del msi.txt
+  - cmd: |
       installer\dist\microk8s.exe install --assume-yes
 
   artifacts:
