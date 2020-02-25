@@ -108,7 +108,8 @@ for:
   - tar -czf microk8s.tgz -C installer/dist microk8s
 
   test_script:
-  - echo "Running select unit tests..."
+  - cmd: |
+    installer/dist/microk8s install --assume-yes
 
   artifacts:
   - path: microk8s.tgz
