@@ -63,12 +63,15 @@ for:
 
   test_script:
   - cmd: |
-      msiexec /i installer\dist\microk8s-installer.msix /l*v msi.txt /qn
+      cd installer\dist
+      dir
+      msiexec /i microk8s-installer.msix /l*v msi.txt /qn
       type msi.txt
       del msi.txt
-      msiexec /x installer\dist\microk8s-installer.msix /l*v msi.txt /qn
+      msiexec /x microk8s-installer.msix /l*v msi.txt /qn
       type msi.txt
       del msi.txt
+      cd ..\..\
   - cmd: |
       installer\dist\microk8s.exe install --assume-yes
 
