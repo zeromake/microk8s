@@ -108,9 +108,8 @@ for:
   - tar -czf microk8s.tgz -C installer/dist microk8s
 
   test_script:
-  - cmd: |
-    installer/dist/microk8s install --assume-yes
-    installer/dist/microk8s uninstall
+  - installer/dist/microk8s install --assume-yes
+  - installer/dist/microk8s uninstall
 
   artifacts:
   - path: microk8s.tgz
