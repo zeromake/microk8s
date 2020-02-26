@@ -108,7 +108,9 @@ for:
   - tar -czf microk8s.tgz -C installer/dist microk8s
 
   test_script:
+  - brew cask install virtualbox
   - brew cask install multipass
+  - multipass set local.driver=virtualbox
   - installer/dist/microk8s install --assume-yes
   - installer/dist/microk8s uninstall
 
