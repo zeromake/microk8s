@@ -356,7 +356,7 @@ spec:
         operator: "Exists"
       containers:
         - name: influxdb
-          image: k8s.gcr.io/heapster-influxdb-$ARCH:v1.3.3
+          image: registry.cn-hangzhou.aliyuncs.com/google_containers/heapster-influxdb-$ARCH:v1.3.3
           resources:
             limits:
               cpu: 100m
@@ -373,7 +373,7 @@ spec:
           - name: influxdb-persistent-storage
             mountPath: /data
         - name: grafana
-          image: k8s.gcr.io/heapster-grafana-$ARCH:v4.4.3
+          image: registry.cn-hangzhou.aliyuncs.com/google_containers/heapster-grafana-$ARCH:v4.4.3
           env:
           resources:
             # keep request = limit to keep this container in guaranteed class
@@ -491,7 +491,7 @@ spec:
     spec:
       priorityClassName: system-cluster-critical
       containers:
-        - image: k8s.gcr.io/heapster-$ARCH:v1.5.2
+        - image: registry.cn-hangzhou.aliyuncs.com/google_containers/heapster-$ARCH:v1.5.2
           name: heapster
           livenessProbe:
             httpGet:
@@ -504,7 +504,7 @@ spec:
             - /heapster
             - --source=kubernetes.summary_api:''
             - --sink=influxdb:http://monitoring-influxdb:8086
-        - image: k8s.gcr.io/heapster-$ARCH:v1.5.2
+        - image: registry.cn-hangzhou.aliyuncs.com/google_containers/heapster-$ARCH:v1.5.2
           name: eventer
           command:
             - /eventer

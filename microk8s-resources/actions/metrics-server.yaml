@@ -99,7 +99,7 @@ spec:
       serviceAccountName: metrics-server
       containers:
       - name: metrics-server
-        image: k8s.gcr.io/metrics-server-$ARCH:v0.2.1
+        image: registry.cn-hangzhou.aliyuncs.com/google_containers/metrics-server-$ARCH:v0.2.1
         command:
         - /metrics-server
         - --source=kubernetes.summary_api:''
