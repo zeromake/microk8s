@@ -8,5 +8,5 @@ metadata:
 spec:
   containers:
   - name: nginx
-    image: nginx:latest
+    image: docker.mirrors.ustc.edu.cn/nginx:latest
   restartPolicy: Always

@@ -15,7 +15,7 @@ spec:
   volumeMode: Filesystem
   resources:
     requests:
-      storage: 20Gi
+      storage: $DISKSIZE
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -36,7 +36,7 @@ spec:
     spec:
       containers:
       - name: registry
-        image: cdkbot/registry-$ARCH:2.6
+        image: docker.mirrors.ustc.edu.cn/cdkbot/registry-$ARCH:2.6
         env:
         - name: REGISTRY_HTTP_ADDR
           value: :5000

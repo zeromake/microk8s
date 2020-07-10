@@ -26,7 +26,7 @@ spec:
       - env:
         - name: DP_DISABLE_HEALTHCHECKS
           value: xids
-        image: nvidia/k8s-device-plugin:1.11
+        image: docker.mirrors.ustc.edu.cn/nvidia/k8s-device-plugin:1.11
         name: nvidia-device-plugin-ctr
         securityContext:
           allowPrivilegeEscalation: true

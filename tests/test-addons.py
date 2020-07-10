@@ -1,12 +1,12 @@
 import pytest
 import os
 import platform
-import time
 
 from validators import (
     validate_dns_dashboard,
     validate_storage,
     validate_ingress,
+    validate_ambassador,
     validate_gpu,
     validate_istio,
     validate_knative,
@@ -19,6 +19,7 @@ from validators import (
     validate_linkerd,
     validate_rbac,
     validate_cilium,
+    validate_multus,
     validate_kubeflow,
 )
 from utils import (
@@ -26,12 +27,12 @@ from utils import (
     wait_for_pod_state,
     wait_for_namespace_termination,
     microk8s_disable,
-    microk8s_reset
+    microk8s_reset,
 )
 from subprocess import Popen, PIPE, STDOUT, CalledProcessError
 
-class TestAddons(object):
 
+class TestAddons(object):
     @pytest.fixture(autouse=True)
     def clean_up(self):
         """
@@ -39,7 +40,7 @@ class TestAddons(object):
         """
         yield
         microk8s_reset()
-    
+
     def test_basic(self):
         """
         Sets up and tests dashboard, dns, storage, registry, ingress.
@@ -75,12 +76,34 @@ class TestAddons(object):
         microk8s_disable("storage:destroy-storage")
         '''
         We would disable DNS here but this freezes any terminating pods.
-        We let microk8s.reset to do the cleanup.
+        We let microk8s reset to do the cleanup.
         print("Disabling DNS")
         microk8s_disable("dns")
         '''
 
-    @pytest.mark.skipif(platform.machine() != 'x86_64', reason = "GPU tests are only relevant in x86 architectures")
+    @pytest.mark.skipif(
+        platform.machine() != 'x86_64',
+        reason="Ambassador tests are only relevant in x86 architectures",
+    )
+    def test_ambassador(self):
+        """
+        Test Ambassador.
+
+        """
+        print("Enabling Ambassador")
+        microk8s_enable("ambassador")
+        print("Validating ambassador")
+        validate_ambassador()
+        print("Disabling Ambassador")
+        microk8s_disable("ambassador")
+
+    @pytest.mark.skipif(
+        os.environ.get('UNDER_TIME_PRESSURE') == 'True',
+        reason="Skipping GPU tests as we are under time pressure",
+    )
+    @pytest.mark.skipif(
+        platform.machine() != 'x86_64', reason="GPU tests are only relevant in x86 architectures"
+    )
     def test_gpu(self):
         """
         Sets up nvidia gpu in a gpu capable system. Skip otherwise.
@@ -97,8 +120,13 @@ class TestAddons(object):
         print("Disable gpu")
         microk8s_disable("gpu")
 
-    @pytest.mark.skipif(platform.machine() != 'x86_64', reason = "Istio tests are only relevant in x86 architectures")
-    @pytest.mark.skipif(os.environ.get('UNDER_TIME_PRESSURE') == 'True', reason = "Skipping istio and knative tests as we are under time pressure")    
+    @pytest.mark.skipif(
+        platform.machine() != 'x86_64', reason="Istio tests are only relevant in x86 architectures"
+    )
+    @pytest.mark.skipif(
+        os.environ.get('UNDER_TIME_PRESSURE') == 'True',
+        reason="Skipping istio and knative tests as we are under time pressure",
+    )
     def test_knative_istio(self):
         """
         Sets up and validate istio.
@@ -106,8 +134,7 @@ class TestAddons(object):
         """
 
         print("Enabling Knative and Istio")
-        p = Popen("/snap/bin/microk8s.enable knative".split(), stdout=PIPE, stdin=PIPE, stderr=STDOUT)
-        p.communicate(input=b'N\n')[0]
+        microk8s_enable("knative")
         print("Validating Istio")
         validate_istio()
         print("Validating Knative")
@@ -118,19 +145,43 @@ class TestAddons(object):
         print("Disabling Istio")
         microk8s_disable("istio")
 
-    @pytest.mark.skipif(platform.machine() != 'x86_64', reason = "Cilium tests are only relevant in x86 architectures")
-    @pytest.mark.skipif(os.environ.get('UNDER_TIME_PRESSURE') == 'True', reason = "Skipping cilium tests as we are under time pressure")    
+    @pytest.mark.skipif(
+        platform.machine() != 'x86_64', reason="Cilium tests are only relevant in x86 architectures"
+    )
+    @pytest.mark.skipif(
+        os.environ.get('UNDER_TIME_PRESSURE') == 'True',
+        reason="Skipping cilium tests as we are under time pressure",
+    )
     def test_cilium(self):
         """
         Sets up and validates Cilium.
         """
         print("Enabling Cilium")
-        p = Popen("/snap/bin/microk8s.enable cilium".split(), stdout=PIPE, stdin=PIPE, stderr=STDOUT)
+        p = Popen(
+            "/snap/bin/microk8s.enable cilium".split(), stdout=PIPE, stdin=PIPE, stderr=STDOUT
+        )
         p.communicate(input=b'N\n')[0]
         print("Validating Cilium")
         validate_cilium()
         print("Disabling Cilium")
         microk8s_disable("cilium")
+
+    @pytest.mark.skipif(
+        os.environ.get('UNDER_TIME_PRESSURE') == 'True',
+        reason="Skipping multus tests as we are under time pressure",
+    )
+    def test_multus(self):
+        """
+        Sets up and validates Multus.
+        """
+        print("Enabling Multus")
+        p = Popen(
+            "/snap/bin/microk8s.enable multus".split(), stdout=PIPE, stdin=PIPE, stderr=STDOUT
+        )
+        print("Validating Multus")
+        validate_multus()
+        print("Disabling Multus")
+        microk8s_disable("multus")
 
     def test_metrics_server(self):
         """
@@ -144,8 +195,14 @@ class TestAddons(object):
         print("Disabling metrics-server")
         microk8s_disable("metrics-server")
 
-    @pytest.mark.skipif(platform.machine() != 'x86_64', reason = "Fluentd, prometheus, jaeger tests are only relevant in x86 architectures")
-    @pytest.mark.skipif(os.environ.get('UNDER_TIME_PRESSURE') == 'True', reason = "Skipping cilium tests as we are under time pressure")    
+    @pytest.mark.skipif(
+        platform.machine() != 'x86_64',
+        reason="Fluentd, prometheus, jaeger tests are only relevant in x86 architectures",
+    )
+    @pytest.mark.skipif(
+        os.environ.get('UNDER_TIME_PRESSURE') == 'True',
+        reason="Skipping jaeger, prometheus and fluentd tests as we are under time pressure",
+    )
     def test_monitoring_addons(self):
         """
         Test jaeger, prometheus and fluentd.
@@ -153,12 +210,12 @@ class TestAddons(object):
         """
 
         # Prometheus operator on our lxc is chashlooping disabling the test for now.
-        #print("Enabling prometheus")
-        #microk8s_enable("prometheus")
-        #print("Validating Prometheus")
-        #validate_prometheus()
-        #print("Disabling prometheus")
-        #microk8s_disable("prometheus")
+        # print("Enabling prometheus")
+        # microk8s_enable("prometheus")
+        # print("Validating Prometheus")
+        # validate_prometheus()
+        # print("Disabling prometheus")
+        # microk8s_disable("prometheus")
         print("Enabling fluentd")
         microk8s_enable("fluentd")
         print("Enabling jaeger")
@@ -172,8 +229,14 @@ class TestAddons(object):
         print("Disabling fluentd")
         microk8s_disable("fluentd")
 
-    @pytest.mark.skipif(platform.machine() != 'x86_64', reason = "Linkerd tests are only relevant in x86 architectures")
-    @pytest.mark.skipif(os.environ.get('UNDER_TIME_PRESSURE') == 'True', reason = "Skipping Linkerd tests as we are under time pressure")    
+    @pytest.mark.skipif(
+        platform.machine() != 'x86_64',
+        reason="Linkerd tests are only relevant in x86 architectures",
+    )
+    @pytest.mark.skipif(
+        os.environ.get('UNDER_TIME_PRESSURE') == 'True',
+        reason="Skipping Linkerd tests as we are under time pressure",
+    )
     def test_linkerd(self):
         """
         Sets up and validate linkerd
@@ -199,8 +262,14 @@ class TestAddons(object):
         microk8s_disable("rbac")
 
     @pytest.mark.skip("disabling the kubelfow addon until the new bundle becomes available")
-    @pytest.mark.skipif(platform.machine() != 'x86_64', reason = "Kubeflow tests are only relevant in x86 architectures")
-    @pytest.mark.skipif(os.environ.get('UNDER_TIME_PRESSURE') == 'True', reason = "Skipping kubeflow test as we are under time pressure")
+    @pytest.mark.skipif(
+        platform.machine() != 'x86_64',
+        reason="Kubeflow tests are only relevant in x86 architectures",
+    )
+    @pytest.mark.skipif(
+        os.environ.get('UNDER_TIME_PRESSURE') == 'True',
+        reason="Skipping kubeflow test as we are under time pressure",
+    )
     def test_kubeflow_addon(self):
         """
         Test kubeflow.

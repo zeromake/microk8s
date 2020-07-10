@@ -13,7 +13,7 @@ metadata:
   name: speaker
   namespace: metallb-system
 spec:
-  allowPrivilegeEscalation: false
+  allowPrivilegeEscalation: {{allow_escalation}}
   allowedCapabilities:
   - NET_ADMIN
   - NET_RAW
@@ -212,7 +212,7 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: status.hostIP
-        image: metallb/speaker:v0.8.2
+        image: docker.mirrors.ustc.edu.cn/metallb/speaker:v0.8.2
         imagePullPolicy: IfNotPresent
         name: speaker
         ports:
@@ -223,7 +223,7 @@ spec:
             cpu: 100m
             memory: 100Mi
         securityContext:
-          allowPrivilegeEscalation: false
+          allowPrivilegeEscalation: {{allow_escalation}}
           capabilities:
             add:
             - NET_ADMIN
@@ -268,7 +268,7 @@ spec:
       - args:
         - --port=7472
         - --config=config
-        image: metallb/controller:v0.8.2
+        image: docker.mirrors.ustc.edu.cn/metallb/controller:v0.8.2
         imagePullPolicy: IfNotPresent
         name: controller
         ports:
@@ -279,7 +279,7 @@ spec:
             cpu: 100m
             memory: 100Mi
         securityContext:
-          allowPrivilegeEscalation: false
+          allowPrivilegeEscalation: {{allow_escalation}}
           capabilities:
             drop:
             - all

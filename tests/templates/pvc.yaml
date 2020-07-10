@@ -17,7 +17,7 @@ metadata:
 spec:
   containers:
   - name: hostpath-test-container
-    image: busybox
+    image: docker.mirrors.ustc.edu.cn/busybox
     command: ["/bin/sh", "-c", "while true; do date >> /mnt/dates; sleep 2; done"]
     volumeMounts:
       - name: hostpath-volume

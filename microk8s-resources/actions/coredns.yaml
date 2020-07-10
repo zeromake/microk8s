@@ -83,7 +83,7 @@ spec:
               path: Corefile
       containers:
       - name: coredns
-        image: coredns/coredns:1.6.6
+        image: docker.mirrors.ustc.edu.cn/coredns/coredns:1.6.6
         imagePullPolicy: IfNotPresent
         resources:
           limits:
